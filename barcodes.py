@@ -1,5 +1,6 @@
 import pymysql
 import sqlite3
+import pymssql
 import datetime
 import configparser
 import os
@@ -71,7 +72,25 @@ try:
     db_cursor = db_connection.cursor()
 except:
     logging.error('error connect to mysql')
-####
+
+#mssql connect
+try:
+    viso_host = config['for_sql']['mssql_roger_host']
+    viso_user = config['for_sql']['mssql_roger_user']
+    viso_password = config['for_sql']['mssql_roger_password']
+    viso_database = config['for_sql']['mssql_roger_database']
+    viso_connection = pymssql.connect(
+        host=viso_host,
+        user=viso_user,
+        password=viso_password,
+        database=viso_database)
+    viso_cursor = viso_connection.cursor()
+except:
+    logging.error('error connect to viso')
+    viso_connection = None
+
+
+
 #db_cursor.commit()
 
 #++++++++++++++++++++++++++++++++++++#
@@ -387,6 +406,17 @@ elif programm_mode == 2:
                 if command != '':
                     if identification_status == False:
                         identification_string = command
+                        ##
+                        try:
+                            viso_cursor.execute("SELECT Name, UserExternalIdentifier FROM "
+                                                +config['for_sql']['mssql_roger_workers_table']+" WHERE UserExternalIdentifier='"
+                                                +identification_string+"'")
+                            rows_from_viso = viso_cursor.fetchall()
+                            if rows_from_viso:
+                                console.add_output_line_to_log(rows_from_viso[0][0])
+                        except:
+                            logging.error("error read worker name")
+                        ##
                         identification_status = True
                     elif identification_status == True:
                         enter_key_for_programm_mode_2(command,
