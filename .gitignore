@@ -1,0 +1,6 @@
+__pycache__/
+copies/
+config.json.bak
+'db login.txt'
+log
+plan.txt
