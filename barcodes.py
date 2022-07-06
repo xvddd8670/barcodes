@@ -363,8 +363,9 @@ elif programm_mode == 2:
                                     numer="""+numer+""" and
                                     position="""+str(position)+""" and
                                     type='"""+produkt+"""' and
-                                    worker_id="""+worker_id)
+                                    worker_id='"""+worker_id+"""'""")
             rows = local_db_cursor.fetchall()
+            print(rows)
             if len(rows) > 2:
                 local_db_cursor.execute("""UPDATE documents_workplace
                                         SET time_summary=-1 WHERE
