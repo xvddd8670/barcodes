@@ -32,8 +32,8 @@ if test_mode == True:
     table_scan_all = config['for_sql']['table_scan_all_for_test_mode']
     table_workplace_data = config['for_sql']['table_workplace_data_for_test_mode']
 else:
-    scan_all = config['for_sql']['table_scan_all']
-    workplace_data = config['for_sql']['table_workplace_data']
+    table_scan_all = config['for_sql']['table_scan_all']
+    table_workplace_data = config['for_sql']['table_workplace_data']
 
 ##
 color_yellow = (255, 255, 0)
