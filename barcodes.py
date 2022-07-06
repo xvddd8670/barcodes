@@ -40,6 +40,7 @@ color_yellow = (255, 255, 0)
 color_green = (0, 255, 0)
 color_red = (255, 0, 0)
 color_gray = (200, 200, 200)
+color_dark_gray = (65, 65, 65)
 color_orange = (250, 60, 0)
 
 #pygame init
@@ -122,18 +123,23 @@ except:
 try:
     local_db_cursor.execute("SELECT * FROM documents_workplace WHERE on_server = 0")
     rows_to_documents_workplace = local_db_cursor.fetchall()
+    print(rows_to_documents_workplace[0])
+
     if rows_to_documents_workplace:
         i_in_while = 0
         while i_in_while < len(rows_to_documents_workplace):
             db_cursor.execute("""INSERT INTO """+table_workplace_data+"""
-                              (numer, open_close, date, time, position, count)
+                              (numer, open_close, date, time, position, count, type, worker_id, time_summary)
                               VALUES
                               ("""+str(rows_to_documents_workplace[i_in_while][0])+""",
                               """+str(rows_to_documents_workplace[i_in_while][1])+""",
                               '"""+rows_to_documents_workplace[i_in_while][2]+"""',
                               '"""+rows_to_documents_workplace[i_in_while][3]+"""',
                               """+str(rows_to_documents_workplace[i_in_while][4])+""",
-                              """+str(rows_to_documents_workplace[i_in_while][5])+""")""")
+                              """+str(rows_to_documents_workplace[i_in_while][5])+""",
+                              '"""+rows_to_documents_workplace[i_in_while][7]+"""',
+                              '"""+rows_to_documents_workplace[i_in_while][8]+"""',
+                              """+str(rows_to_documents_workplace[i_in_while][9])+""")""")
             db_connection.commit()
             local_db_cursor.execute("""UPDATE documents_workplace SET on_server=1 WHERE
                                     numer='"""+str(rows_to_documents_workplace[i_in_while][0])+"""' and
@@ -247,6 +253,9 @@ elif programm_mode == 2:
     open_close = '0'
     identification_status = False
     identification_string = ''
+    open_close_text_block_coord_x = 150
+    open_close_text_block_coord_y = 150
+
 
     #vars for gui
     gui_block_width = 200
@@ -264,18 +273,19 @@ elif programm_mode == 2:
 
     #buttons
     exit_button = gui.Button(0, 0, 100, 50, 'X', manager)
-    button_start = gui.Button(screen_width-console_width-(gui_block_width*4),
-                              screen_height-gui_block_height-30,
-                              gui_block_width, gui_block_height/2,
-                              'start',
-                              manager)
-    button_start.button.disable()
-    button_stop = gui.Button(screen_width-console_width-(gui_block_width*4),
-                             screen_height-(gui_block_height/2)-30,
-                             gui_block_width,
-                             gui_block_height/2,
-                             'stop',
-                             manager)
+    #button_start = gui.Button(screen_width-console_width-(gui_block_width*4),
+                              #screen_height-gui_block_height-30,
+                              #gui_block_width, gui_block_height/2,
+                              #'start',
+                              #manager)
+    #button_start.button.disable()
+    #button_stop = gui.Button(screen_width-console_width-(gui_block_width*4),
+                             #screen_height-(gui_block_height/2)-30,
+                             #gui_block_width,
+                             #gui_block_height/2,
+                             #'stop',
+                             #manager)
+    button_logout = gui.Button(100, 100, 100, 50, 'logout', manager)
 
     #counters
     #create font to counters
@@ -347,8 +357,56 @@ elif programm_mode == 2:
         except:
             logging.error('error save to sqlite')
             raise Exception('error save to sqlite')
+        ##
+        if open_close == '1':
+            local_db_cursor.execute("""SELECT * FROM documents_workplace WHERE
+                                    numer="""+numer+""" and
+                                    position="""+str(position)+""" and
+                                    type='"""+produkt+"""' and
+                                    worker_id="""+worker_id)
+            rows = local_db_cursor.fetchall()
+            if len(rows) > 2:
+                local_db_cursor.execute("""UPDATE documents_workplace
+                                        SET time_summary=-1 WHERE
+                                        numer="""+numer+""" and
+                                        position="""+str(position)+""" and
+                                        type='"""+produkt+"""' and
+                                        worker_id="""+worker_id)
+                local_db.commit()
+                db_cursor.execute("""UPDATE """+table_workplace_data+"""
+                                        SET time_summary=-1 WHERE
+                                        numer="""+numer+""" and
+                                        position="""+str(position)+""" and
+                                        type='"""+produkt+"""' and
+                                        worker_id="""+worker_id)
+                db_connection.commit()
+            else:
+                time_open = int(rows[0][3][0:2])*60+int(rows[0][3][3:5])
+                time_close = int(rows[1][3][0:2])*60+int(rows[1][3][3:5])
+                time_summary = time_close-time_open
+                local_db_cursor.execute("""UPDATE documents_workplace
+                                        SET time_summary="""+str(time_summary)+""" WHERE
+                                        numer="""+numer+""" and
+                                        position="""+str(position)+""" and
+                                        type='"""+produkt+"""' and
+                                        worker_id="""+worker_id)
+                local_db.commit()
+                db_cursor.execute("""UPDATE """+table_workplace_data+"""
+                                        SET time_summary="""+str(time_summary)+""" WHERE
+                                        numer="""+numer+""" and
+                                        position="""+str(position)+""" and
+                                        type='"""+produkt+"""' and
+                                        worker_id="""+worker_id)
+                db_connection.commit()
         console.add_output_line_to_log(time_now)
         console.add_output_line_to_log('====================')
+
+    #disable elements if no identification
+    if identification_status == False:
+        counter_for_count.counter_off()
+        counter_for_position.counter_off()
+        counter_for_produkt.counter_off()
+        button_logout.button.disable()
 
     #while to programm mode 2
     clock = pygame.time.Clock()
@@ -365,14 +423,12 @@ elif programm_mode == 2:
                 #buttons
                 if event.ui_element == exit_button.button:
                     running = False
-                elif event.ui_element == button_start.button:
-                    button_start.button.disable()
-                    button_stop.button.enable()
-                    open_close = '0'
-                elif event.ui_element == button_stop.button:
-                    button_stop.button.disable()
-                    button_start.button.enable()
-                    open_close = '1'
+                elif event.ui_element == button_logout.button:
+                    identification_status = False
+                    counter_for_count.counter_off()
+                    counter_for_position.counter_off()
+                    counter_for_produkt.counter_off()
+                    button_logout.button.disable()
 
                 #counter_for_position buttons
                 elif event.ui_element == counter_for_position.button_plus:
@@ -418,6 +474,11 @@ elif programm_mode == 2:
                             logging.error("error read worker name")
                         ##
                         identification_status = True
+                        #elements on
+                        counter_for_count.counter_on()
+                        counter_for_position.counter_on()
+                        counter_for_produkt.counter_on()
+                        button_logout.button.enable()
                     elif identification_status == True:
                         enter_key_for_programm_mode_2(command,
                                                       open_close,
@@ -425,8 +486,10 @@ elif programm_mode == 2:
                                                       counter_for_position.counter,
                                                       counter_for_count.counter,
                                                       identification_string)
-                        identification_string = ''
-                        identification_status = False
+                        if open_close == '0':
+                            open_close = '1'
+                        else:
+                            open_close = '0'
             manager.process_events(event)
         manager.update(time_delta)
 
@@ -459,10 +522,45 @@ elif programm_mode == 2:
         pygame.display.update()
         screen.fill((0, 0, 0))
         manager.draw_ui(screen)
+        #draw objects
         if identification_status == True:
             pygame.draw.ellipse(screen, color_green, pygame.Rect(console_x-100, console_y+18, 100, 100))
         else:
             pygame.draw.ellipse(screen, color_yellow, pygame.Rect(console_x-150, console_y+18, 150, 150))
+        #draw open_close status
+        if open_close == '0':
+            #counter_text = counter_text_font.render('', True, (255, 50, 50))
+            #screen.blit(counter_text,
+                        #(coord_x+(counter_width/3),
+                        #counter_block_coord_y+(block_height/4)))
+            pygame.draw.rect(screen, color_yellow, pygame.Rect(
+                                screen_width-console_width-(gui_block_width*4),
+                                screen_height-gui_block_height-30,
+                                gui_block_width,
+                                gui_block_height/2))
+            pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
+                                screen_width-console_width-(gui_block_width*4),
+                                screen_height-(gui_block_height/2)-30,
+                                gui_block_width,
+                                gui_block_height/2))
+        else:
+            pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
+                                screen_width-console_width-(gui_block_width*4),
+                                screen_height-gui_block_height-30,
+                                gui_block_width,
+                                gui_block_height/2))
+            pygame.draw.rect(screen, color_yellow, pygame.Rect(
+                                screen_width-console_width-(gui_block_width*4),
+                                screen_height-(gui_block_height/2)-30,
+                                gui_block_width,
+                                gui_block_height/2))
+        ##
+        pygame.draw.rect(screen, color_green, pygame.Rect(
+                            screen_width-console_width-(gui_block_width*4),
+                            screen_height-(gui_block_height/2)-40,
+                            gui_block_width,
+                            10))
+        ####
 
 
 

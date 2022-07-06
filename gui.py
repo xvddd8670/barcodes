@@ -57,6 +57,12 @@ class Counter:
             screen.blit(counter_text,
                         (self.coord_x+(self.counter_width/3),
                          self.counter_block_coord_y+(self.block_height/4)))
+    def counter_off(self):
+        self.button_plus.disable()
+        self.button_minus.disable()
+    def counter_on(self):
+        self.button_plus.enable()
+        self.button_minus.enable()
 
 
 
