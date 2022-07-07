@@ -37,6 +37,7 @@ else:
 
 ##
 color_yellow = (255, 255, 0)
+color_soft_yellow = (179, 170, 18)
 color_green = (0, 255, 0)
 color_red = (255, 0, 0)
 color_gray = (200, 200, 200)
@@ -123,7 +124,6 @@ except:
 try:
     local_db_cursor.execute("SELECT * FROM documents_workplace WHERE on_server = 0")
     rows_to_documents_workplace = local_db_cursor.fetchall()
-    print(rows_to_documents_workplace[0])
 
     if rows_to_documents_workplace:
         i_in_while = 0
@@ -255,6 +255,7 @@ elif programm_mode == 2:
     identification_string = ''
     open_close_text_block_coord_x = 150
     open_close_text_block_coord_y = 150
+    force_end_document = False
 
 
     #vars for gui
@@ -285,7 +286,8 @@ elif programm_mode == 2:
                              #gui_block_height/2,
                              #'stop',
                              #manager)
-    button_logout = gui.Button(100, 100, 100, 50, 'logout', manager)
+    button_logout = gui.Button(0, 150, 200, 100, 'koniec prace', manager)
+    button_forced_end = gui.Button(0, 150+100, 200, 100, 'zamkni zlecenie', manager)
 
     #counters
     #create font to counters
@@ -365,8 +367,7 @@ elif programm_mode == 2:
                                     type='"""+produkt+"""' and
                                     worker_id='"""+worker_id+"""'""")
             rows = local_db_cursor.fetchall()
-            print(rows)
-            if len(rows) > 2:
+            if (len(rows) > 2) or (force_end_document == True):
                 local_db_cursor.execute("""UPDATE documents_workplace
                                         SET time_summary=-1 WHERE
                                         numer="""+numer+""" and
@@ -408,6 +409,13 @@ elif programm_mode == 2:
         counter_for_position.counter_off()
         counter_for_produkt.counter_off()
         button_logout.button.disable()
+        button_forced_end.button.disable()
+
+    #render text
+    text_start_stop_text_size = 60
+    text_start_stop_font = pygame.font.Font(None, text_start_stop_text_size)
+    #text_start_text = text_start_stop_font.render('start', True, (255, 50, 50))
+    #text_stop_text = text_start_stop_font.render('stop', True, (255, 50, 50))
 
     #while to programm mode 2
     clock = pygame.time.Clock()
@@ -430,6 +438,18 @@ elif programm_mode == 2:
                     counter_for_position.counter_off()
                     counter_for_produkt.counter_off()
                     button_logout.button.disable()
+                    button_forced_end.button.disable()
+                elif event.ui_element == button_forced_end.button:
+                    force_end_document = True
+                    enter_key_for_programm_mode_2(command,
+                                                  open_close,
+                                                  litehral_dict_for_produkt_counter[counter_for_produkt.counter],
+                                                  counter_for_position.counter,
+                                                  counter_for_count.counter,
+                                                  identification_string)
+                    force_end_document = False
+                    open_close = '0'
+                    button_forced_end.button.disable()
 
                 #counter_for_position buttons
                 elif event.ui_element == counter_for_position.button_plus:
@@ -480,6 +500,7 @@ elif programm_mode == 2:
                         counter_for_position.counter_on()
                         counter_for_produkt.counter_on()
                         button_logout.button.enable()
+                        #button_forced_end.button.enable()
                     elif identification_status == True:
                         enter_key_for_programm_mode_2(command,
                                                       open_close,
@@ -489,8 +510,10 @@ elif programm_mode == 2:
                                                       identification_string)
                         if open_close == '0':
                             open_close = '1'
+                            button_forced_end.button.enable()
                         else:
                             open_close = '0'
+                            button_forced_end.button.disable()
             manager.process_events(event)
         manager.update(time_delta)
 
@@ -534,7 +557,7 @@ elif programm_mode == 2:
             #screen.blit(counter_text,
                         #(coord_x+(counter_width/3),
                         #counter_block_coord_y+(block_height/4)))
-            pygame.draw.rect(screen, color_yellow, pygame.Rect(
+            pygame.draw.rect(screen, color_soft_yellow, pygame.Rect(
                                 screen_width-console_width-(gui_block_width*4),
                                 screen_height-gui_block_height-30,
                                 gui_block_width,
@@ -544,17 +567,21 @@ elif programm_mode == 2:
                                 screen_height-(gui_block_height/2)-30,
                                 gui_block_width,
                                 gui_block_height/2))
+            text_start_text = text_start_stop_font.render('start', True, (255, 0, 0))
+            text_stop_text = text_start_stop_font.render('stop', True, (120, 50, 50))
         else:
             pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
                                 screen_width-console_width-(gui_block_width*4),
                                 screen_height-gui_block_height-30,
                                 gui_block_width,
                                 gui_block_height/2))
-            pygame.draw.rect(screen, color_yellow, pygame.Rect(
+            pygame.draw.rect(screen, color_soft_yellow, pygame.Rect(
                                 screen_width-console_width-(gui_block_width*4),
                                 screen_height-(gui_block_height/2)-30,
                                 gui_block_width,
                                 gui_block_height/2))
+            text_start_text = text_start_stop_font.render('start', True, (120, 50, 50))
+            text_stop_text = text_start_stop_font.render('stop', True, (255, 0, 0))
         ##
         pygame.draw.rect(screen, color_green, pygame.Rect(
                             screen_width-console_width-(gui_block_width*4),
@@ -562,6 +589,10 @@ elif programm_mode == 2:
                             gui_block_width,
                             10))
         ####
+        screen.blit(text_start_text, (screen_width-console_width-(gui_block_width*4)+(gui_block_width/4),
+                                      screen_height-gui_block_height+10))
+        screen.blit(text_stop_text, (screen_width-console_width-(gui_block_width*4)+(gui_block_width/4),
+                                     screen_height-(gui_block_height/2)+10))
 
 
 
