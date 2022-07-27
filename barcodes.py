@@ -8,9 +8,18 @@ import logging
 import pygame
 import pygame_gui
 import json
+import random
+import secrets
+import string
 ####################
 import gui
 
+#+++++++++++++++++++++++#
+def random_string(length):
+    letters_and_digits = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(
+        letters_and_digits) for i in range(length))
+#+++++++++++++++++++++++#
 
 #logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename='log')
@@ -256,6 +265,8 @@ elif programm_mode == 2:
     open_close_text_block_coord_x = 150
     open_close_text_block_coord_y = 150
     force_end_document = False
+    operation_id_uni = random_string(12)
+    operation_id_nouni = ''
 
 
     #vars for gui
@@ -316,7 +327,7 @@ elif programm_mode == 2:
                                       gui_block_width, gui_block_height, False,  manager)
 
     #enter key function
-    def enter_key_for_programm_mode_2(numer, status, produkt, position, count, worker_id):
+    def enter_key_for_programm_mode_2(numer, status, produkt, position, count, worker_id, uni_operation_id, nouni_operation_id):
         on_server = '1'
         date_now = datetime.date.today().strftime('%Y-%m-%d')
         time_now = datetime.datetime.now().time().strftime('%H:%M:%S')
@@ -324,14 +335,18 @@ elif programm_mode == 2:
         try:
             str_for_mysql_request = ("""
                 INSERT INTO """+table_workplace_data+"""
-                (numer, open_close, date, time, position, count, type, worker_id)
+                (numer, open_close, date, time, position, count, type, worker_id, uni_operation_id, nouni_operation_id)
                 VALUES ("""
                 +numer+""", '"""
                 +status+"""', '"""
                 +date_now+"""', '"""
                 +time_now+"""', """
                 +str(position)+""", """
-                +str(count)+""", '"""+produkt+"""', '"""+worker_id+"""')""")
+                +str(count)+""", '"""
+                +produkt+"""', '"""
+                +worker_id+"""', '"""
+                +uni_operation_id+"""', '"""
+                +nouni_operation_id+"""')""")
             db_cursor.execute(str_for_mysql_request)
             db_connection.commit()
             on_server = '1'
@@ -343,7 +358,7 @@ elif programm_mode == 2:
         try:
             str_for_sqlite_request = ("""
                 INSERT INTO documents_workplace
-                (numer, open_close, date, time, position, count, on_server, type, worker_id)
+                (numer, open_close, date, time, position, count, on_server, type, worker_id, uni_operation_id, nouni_operation_id)
                 VALUES ("""
                 +numer+""", '"""
                 +status+"""', '"""
@@ -353,14 +368,18 @@ elif programm_mode == 2:
                 +str(count)+""", '"""
                 +on_server+"""', '"""
                 +produkt+"""', '"""
-                +worker_id+"""')""")
+                +worker_id+"""', '"""
+                +uni_operation_id+"""', '"""
+                +nouni_operation_id+"""')""")
             local_db_cursor.execute(str_for_sqlite_request)
             local_db.commit()
         except:
             logging.error('error save to sqlite')
             raise Exception('error save to sqlite')
-        ##
+
+        #calculate and write time
         if open_close == '1':
+            i=0
             local_db_cursor.execute("""SELECT * FROM documents_workplace WHERE
                                     numer="""+numer+""" and
                                     position="""+str(position)+""" and
@@ -405,11 +424,17 @@ elif programm_mode == 2:
 
     #disable elements if no identification
     if identification_status == False:
-        counter_for_count.counter_off()
-        counter_for_position.counter_off()
-        counter_for_produkt.counter_off()
-        button_logout.button.disable()
+        #counter_for_count.counter_off()
+        #counter_for_position.counter_off()
+        #counter_for_produkt.counter_off()
+        #button_logout.button.disable()
         button_forced_end.button.disable()
+        ####
+        button_forced_end.hide_button()
+        button_logout.hide_button()
+        counter_for_count.counter_hide()
+        counter_for_position.counter_hide()
+        counter_for_produkt.counter_hide()
 
     #render text
     text_start_stop_text_size = 60
@@ -420,6 +445,7 @@ elif programm_mode == 2:
     #while to programm mode 2
     clock = pygame.time.Clock()
     running = True
+    ####
     while running:
         time_delta = clock.tick(60)/1000.0
         for event in pygame.event.get():
@@ -434,11 +460,19 @@ elif programm_mode == 2:
                     running = False
                 elif event.ui_element == button_logout.button:
                     identification_status = False
-                    counter_for_count.counter_off()
-                    counter_for_position.counter_off()
-                    counter_for_produkt.counter_off()
-                    button_logout.button.disable()
-                    button_forced_end.button.disable()
+                    #counter_for_count.counter_off()
+                    #counter_for_position.counter_off()
+                    #counter_for_produkt.counter_off()
+                    #button_logout.button.disable()
+                    #button_forced_end.button.disable()
+                    button_forced_end.hide_button()
+                    button_logout.hide_button()
+                    counter_for_count.counter_hide()
+                    counter_for_position.counter_hide()
+                    counter_for_produkt.counter_hide()
+
+                    ##########
+                    ##########
                 elif event.ui_element == button_forced_end.button:
                     force_end_document = True
                     enter_key_for_programm_mode_2(command,
@@ -446,7 +480,9 @@ elif programm_mode == 2:
                                                   litehral_dict_for_produkt_counter[counter_for_produkt.counter],
                                                   counter_for_position.counter,
                                                   counter_for_count.counter,
-                                                  identification_string)
+                                                  identification_string,
+                                                  operation_id_uni,
+                                                  operation_id_nouni)
                     force_end_document = False
                     open_close = '0'
                     button_forced_end.button.disable()
@@ -495,105 +531,126 @@ elif programm_mode == 2:
                             logging.error("error read worker name")
                         ##
                         identification_status = True
-                        #elements on
-                        counter_for_count.counter_on()
-                        counter_for_position.counter_on()
-                        counter_for_produkt.counter_on()
-                        button_logout.button.enable()
-                        #button_forced_end.button.enable()
+                        button_forced_end.show_button()
+                        button_logout.show_button()
+                        counter_for_count.counter_show()
+                        counter_for_position.counter_show()
+                        counter_for_produkt.counter_show()
                     elif identification_status == True:
+                        #nouni_id create
+                        operation_id_nouni = (command +
+                                            litehral_dict_for_produkt_counter[counter_for_produkt.counter] +
+                                            str(counter_for_position.counter) +
+                                            str(counter_for_count.counter) +
+                                            str(identification_string))
                         enter_key_for_programm_mode_2(command,
                                                       open_close,
                                                       litehral_dict_for_produkt_counter[counter_for_produkt.counter],
                                                       counter_for_position.counter,
                                                       counter_for_count.counter,
-                                                      identification_string)
+                                                      identification_string,
+                                                      operation_id_uni,
+                                                      operation_id_nouni)
                         if open_close == '0':
                             open_close = '1'
                             button_forced_end.button.enable()
                         else:
                             open_close = '0'
                             button_forced_end.button.disable()
+                            operation_id_uni = random_string(12)
+                            #uni_id create
+            #else:
+                #manager.set_focus_set(console.command_entry)
+            if event.type == pygame.BUTTON_LEFT:
+                manager.set_focus_set(console.command_entry)
             manager.process_events(event)
         manager.update(time_delta)
 
         #render
-        #counters render
-        #counter_for_position
-        counter_for_position.render(screen)
-        screen.blit(text_to_counter_for_position,
-                    (screen_width-console_width-(gui_block_width*2)+(gui_block_width/4),
-                     screen_height-gui_block_height-60))
-        #counter_for_count
-        counter_for_count.render(screen)
-        screen.blit(text_to_counter_for_count,
-                    (screen_width-console_width-gui_block_width+(gui_block_width/4),
-                     screen_height-gui_block_height-60))
-        #counter_for_product
-        counter_for_produkt.render(screen)
-        screen.blit(text_to_counter_for_produkt,
-                    (screen_width-console_width-(gui_block_width*3)+(gui_block_width/4),
-                     screen_height-gui_block_height-60))
-        #
-        litehral_counter_for_produkt = counter_for_produkt.counter_text_font.render(litehral_dict_for_produkt_counter
-                                                                                    [counter_for_produkt.counter],
-                                                                                    True,
-                                                                                    (255, 50, 50))
-        screen.blit(litehral_counter_for_produkt,
-                    (counter_for_produkt.coord_x+(counter_for_produkt.counter_width/3),
-                     counter_for_produkt.counter_block_coord_y+(counter_for_produkt.block_height/4)))
-        ##
-        pygame.display.update()
-        screen.fill((0, 0, 0))
-        manager.draw_ui(screen)
-        #draw objects
         if identification_status == True:
-            pygame.draw.ellipse(screen, color_green, pygame.Rect(console_x-100, console_y+18, 100, 100))
+            #counters render
+            #counter_for_position
+            counter_for_position.render(screen)
+            screen.blit(text_to_counter_for_position,
+                        (screen_width-console_width-(gui_block_width*2)+(gui_block_width/4),
+                         screen_height-gui_block_height-60))
+            #counter_for_count
+            counter_for_count.render(screen)
+            screen.blit(text_to_counter_for_count,
+                        (screen_width-console_width-gui_block_width+(gui_block_width/4),
+                         screen_height-gui_block_height-60))
+            #counter_for_product
+            counter_for_produkt.render(screen)
+            screen.blit(text_to_counter_for_produkt,
+                        (screen_width-console_width-(gui_block_width*3)+(gui_block_width/4),
+                         screen_height-gui_block_height-60))
+            #
+            litehral_counter_for_produkt = counter_for_produkt.counter_text_font.render(litehral_dict_for_produkt_counter
+                                                                                        [counter_for_produkt.counter],
+                                                                                        True,
+                                                                                        (255, 50, 50))
+            screen.blit(litehral_counter_for_produkt,
+                        (counter_for_produkt.coord_x+(counter_for_produkt.counter_width/3),
+                         counter_for_produkt.counter_block_coord_y+(counter_for_produkt.block_height/4)))
+            ##
+            pygame.display.update()
+            screen.fill((0, 0, 0))
+            manager.draw_ui(screen)
+            #draw objects
+            #if identification_status == True:
+                #pygame.draw.ellipse(screen, color_green, pygame.Rect(console_x-100, console_y+18, 100, 100))
+            #else:
+                #pygame.draw.ellipse(screen, color_yellow, pygame.Rect(console_x-150, console_y+18, 150, 150))
+            #draw open_close status
+            if open_close == '0':
+                #counter_text = counter_text_font.render('', True, (255, 50, 50))
+                #screen.blit(counter_text,
+                            #(coord_x+(counter_width/3),
+                            #counter_block_coord_y+(block_height/4)))
+                pygame.draw.rect(screen, color_soft_yellow, pygame.Rect(
+                                    screen_width-console_width-(gui_block_width*4),
+                                    screen_height-gui_block_height-30,
+                                    gui_block_width,
+                                    gui_block_height/2))
+                pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
+                                    screen_width-console_width-(gui_block_width*4),
+                                    screen_height-(gui_block_height/2)-30,
+                                    gui_block_width,
+                                    gui_block_height/2))
+                text_start_text = text_start_stop_font.render('start', True, (255, 0, 0))
+                text_stop_text = text_start_stop_font.render('stop', True, (120, 50, 50))
+            else:
+                pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
+                                    screen_width-console_width-(gui_block_width*4),
+                                    screen_height-gui_block_height-30,
+                                    gui_block_width,
+                                    gui_block_height/2))
+                pygame.draw.rect(screen, color_soft_yellow, pygame.Rect(
+                                    screen_width-console_width-(gui_block_width*4),
+                                    screen_height-(gui_block_height/2)-30,
+                                    gui_block_width,
+                                    gui_block_height/2))
+                text_start_text = text_start_stop_font.render('start', True, (120, 50, 50))
+                text_stop_text = text_start_stop_font.render('stop', True, (255, 0, 0))
+            ##
+            pygame.draw.rect(screen, color_green, pygame.Rect(
+                                screen_width-console_width-(gui_block_width*4),
+                                screen_height-(gui_block_height/2)-40,
+                                gui_block_width,
+                                10))
+            ####
+            screen.blit(text_start_text, (screen_width-console_width-(gui_block_width*4)+(gui_block_width/4),
+                                          screen_height-gui_block_height+10))
+            screen.blit(text_stop_text, (screen_width-console_width-(gui_block_width*4)+(gui_block_width/4),
+                                         screen_height-(gui_block_height/2)+10))
         else:
-            pygame.draw.ellipse(screen, color_yellow, pygame.Rect(console_x-150, console_y+18, 150, 150))
-        #draw open_close status
-        if open_close == '0':
-            #counter_text = counter_text_font.render('', True, (255, 50, 50))
-            #screen.blit(counter_text,
-                        #(coord_x+(counter_width/3),
-                        #counter_block_coord_y+(block_height/4)))
-            pygame.draw.rect(screen, color_soft_yellow, pygame.Rect(
-                                screen_width-console_width-(gui_block_width*4),
-                                screen_height-gui_block_height-30,
-                                gui_block_width,
-                                gui_block_height/2))
-            pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
-                                screen_width-console_width-(gui_block_width*4),
-                                screen_height-(gui_block_height/2)-30,
-                                gui_block_width,
-                                gui_block_height/2))
-            text_start_text = text_start_stop_font.render('start', True, (255, 0, 0))
-            text_stop_text = text_start_stop_font.render('stop', True, (120, 50, 50))
-        else:
-            pygame.draw.rect(screen, color_dark_gray, pygame.Rect(
-                                screen_width-console_width-(gui_block_width*4),
-                                screen_height-gui_block_height-30,
-                                gui_block_width,
-                                gui_block_height/2))
-            pygame.draw.rect(screen, color_soft_yellow, pygame.Rect(
-                                screen_width-console_width-(gui_block_width*4),
-                                screen_height-(gui_block_height/2)-30,
-                                gui_block_width,
-                                gui_block_height/2))
-            text_start_text = text_start_stop_font.render('start', True, (120, 50, 50))
-            text_stop_text = text_start_stop_font.render('stop', True, (255, 0, 0))
-        ##
-        pygame.draw.rect(screen, color_green, pygame.Rect(
-                            screen_width-console_width-(gui_block_width*4),
-                            screen_height-(gui_block_height/2)-40,
-                            gui_block_width,
-                            10))
-        ####
-        screen.blit(text_start_text, (screen_width-console_width-(gui_block_width*4)+(gui_block_width/4),
-                                      screen_height-gui_block_height+10))
-        screen.blit(text_stop_text, (screen_width-console_width-(gui_block_width*4)+(gui_block_width/4),
-                                     screen_height-(gui_block_height/2)+10))
-
+            pygame.display.update()
+            screen.fill((0, 0, 0))
+            manager.draw_ui(screen)
+            id_text_pl = text_start_stop_font.render('odskanowac kod', True, (255, 50, 50))
+            id_text_ua = text_start_stop_font.render('відсканувати код', True, (255, 50, 50))
+            screen.blit(id_text_pl, (100, 100))
+            screen.blit(id_text_ua, (100, 200))
 
 
     pygame.quit()
