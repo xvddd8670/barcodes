@@ -297,7 +297,7 @@ elif programm_mode == 2:
                              #gui_block_height/2,
                              #'stop',
                              #manager)
-    button_logout = gui.Button(0, 150, 200, 100, 'koniec prace', manager)
+    button_logout = gui.Button(0, 150, 200, 100, 'koniec pracy', manager)
     button_forced_end = gui.Button(0, 150+100, 200, 100, 'zamkni zlecenie', manager)
 
     #counters
